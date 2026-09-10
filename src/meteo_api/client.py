@@ -1,7 +1,7 @@
 import json
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode, urljoin, urlparse, urlsplit
+from urllib.parse import unquote, urlencode, urljoin, urlparse, urlsplit
 from urllib.request import Request, urlopen
 
 
@@ -24,7 +24,7 @@ class MeteoAPIClient:
     def fetch(self, endpoint: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         if endpoint.startswith(("http://", "https://", "//")):
             raise ApiFetchError("Endpoint must be a relative path")
-        path_segments = urlsplit(endpoint).path.split("/")
+        path_segments = unquote(urlsplit(endpoint).path).split("/")
         if ".." in path_segments:
             raise ApiFetchError("Endpoint must not contain path traversal segments")
         endpoint = endpoint.lstrip("/")

@@ -81,6 +81,12 @@ class TestMeteoAPIClient(unittest.TestCase):
         with self.assertRaises(ApiFetchError):
             client.fetch("../admin")
 
+    def test_fetch_raises_on_encoded_path_traversal_endpoint(self):
+        client = MeteoAPIClient("https://example.com/v1")
+
+        with self.assertRaises(ApiFetchError):
+            client.fetch("%2e%2e/admin")
+
     def test_init_raises_on_invalid_base_url(self):
         with self.assertRaises(ValueError):
             MeteoAPIClient("example.com")
