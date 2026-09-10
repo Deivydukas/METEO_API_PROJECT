@@ -1,7 +1,7 @@
 import json
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode, urljoin
+from urllib.parse import urlencode, urljoin, urlparse, urlsplit
 from urllib.request import Request, urlopen
 
 
@@ -15,12 +15,18 @@ class InvalidResponseError(ApiFetchError):
 
 class MeteoAPIClient:
     def __init__(self, base_url: str, timeout: int = 10):
+        parsed = urlparse(base_url)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("base_url must be an absolute HTTP(S) URL")
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
 
     def fetch(self, endpoint: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         if endpoint.startswith(("http://", "https://", "//")):
             raise ApiFetchError("Endpoint must be a relative path")
+        path_segments = urlsplit(endpoint).path.split("/")
+        if ".." in path_segments:
+            raise ApiFetchError("Endpoint must not contain path traversal segments")
         endpoint = endpoint.lstrip("/")
 
         query = urlencode(params or {})

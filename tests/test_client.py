@@ -75,6 +75,16 @@ class TestMeteoAPIClient(unittest.TestCase):
         with self.assertRaises(ApiFetchError):
             client.fetch("https://malicious.example/weather")
 
+    def test_fetch_raises_on_path_traversal_endpoint(self):
+        client = MeteoAPIClient("https://example.com/v1")
+
+        with self.assertRaises(ApiFetchError):
+            client.fetch("../admin")
+
+    def test_init_raises_on_invalid_base_url(self):
+        with self.assertRaises(ValueError):
+            MeteoAPIClient("example.com")
+
     @patch("src.meteo_api.client.urlopen")
     def test_fetch_raises_on_http_error(self, mock_urlopen):
         mock_urlopen.side_effect = HTTPError(
