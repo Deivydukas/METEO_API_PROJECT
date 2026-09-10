@@ -22,6 +22,21 @@ class TestMeteoAPIClient(unittest.TestCase):
         self.assertIn("city=Vilnius", called_request.full_url)
 
     @patch("src.meteo_api.client.urlopen")
+    def test_fetch_merges_endpoint_and_params_query(self, mock_urlopen):
+        response = MagicMock()
+        response.read.return_value = b'{"temperature": 22}'
+        response.getcode.return_value = 200
+        response.headers.get_content_charset.return_value = "utf-8"
+        mock_urlopen.return_value.__enter__.return_value = response
+
+        client = MeteoAPIClient("https://example.com")
+        client.fetch("/weather?units=metric", params={"city": "Vilnius"})
+
+        called_request = mock_urlopen.call_args.args[0]
+        self.assertIn("units=metric", called_request.full_url)
+        self.assertIn("city=Vilnius", called_request.full_url)
+
+    @patch("src.meteo_api.client.urlopen")
     def test_fetch_preserves_base_path_prefix(self, mock_urlopen):
         response = MagicMock()
         response.read.return_value = b'{"temperature": 22}'
@@ -90,6 +105,10 @@ class TestMeteoAPIClient(unittest.TestCase):
     def test_init_raises_on_invalid_base_url(self):
         with self.assertRaises(ValueError):
             MeteoAPIClient("example.com")
+
+    def test_init_raises_on_non_positive_timeout(self):
+        with self.assertRaises(ValueError):
+            MeteoAPIClient("https://example.com", timeout=0)
 
     @patch("src.meteo_api.client.urlopen")
     def test_fetch_raises_on_http_error(self, mock_urlopen):

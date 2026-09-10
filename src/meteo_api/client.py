@@ -1,7 +1,7 @@
 import json
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import unquote, urlencode, urljoin, urlparse, urlsplit
+from urllib.parse import parse_qs, unquote, urlencode, urljoin, urlparse, urlsplit
 from urllib.request import Request, urlopen
 
 
@@ -18,20 +18,25 @@ class MeteoAPIClient:
         parsed = urlparse(base_url)
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
             raise ValueError("base_url must be an absolute HTTP(S) URL")
+        if timeout <= 0:
+            raise ValueError("timeout must be greater than 0")
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
 
     def fetch(self, endpoint: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         if endpoint.startswith(("http://", "https://", "//")):
             raise ApiFetchError("Endpoint must be a relative path")
-        path_segments = unquote(urlsplit(endpoint).path).split("/")
+        split_endpoint = urlsplit(endpoint)
+        path_segments = unquote(split_endpoint.path).split("/")
         if ".." in path_segments:
             raise ApiFetchError("Endpoint must not contain path traversal segments")
-        endpoint = endpoint.lstrip("/")
-
-        query = urlencode(params or {})
+        endpoint_path = split_endpoint.path.lstrip("/")
+        merged_query: dict[str, Any] = parse_qs(split_endpoint.query, keep_blank_values=True)
+        for key, value in (params or {}).items():
+            merged_query[key] = value if isinstance(value, (list, tuple)) else [value]
+        query = urlencode(merged_query, doseq=True)
         base_url = f"{self.base_url}/"
-        url = urljoin(base_url, endpoint)
+        url = urljoin(base_url, endpoint_path)
         if query:
             url = f"{url}?{query}"
 
