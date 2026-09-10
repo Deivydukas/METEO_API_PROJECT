@@ -37,6 +37,11 @@ class MeteoAPIClient:
             raise ApiFetchError(f"API returned status code {status_code}")
 
         try:
-            return json.loads(payload)
+            data = json.loads(payload)
         except json.JSONDecodeError as exc:
             raise InvalidResponseError("API response is not valid JSON") from exc
+
+        if not isinstance(data, dict):
+            raise InvalidResponseError("API response JSON must be an object")
+
+        return data
