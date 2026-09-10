@@ -31,9 +31,13 @@ class MeteoAPIClient:
         if ".." in path_segments:
             raise ApiFetchError("Endpoint must not contain path traversal segments")
         endpoint_path = split_endpoint.path.lstrip("/")
-        merged_query: dict[str, Any] = parse_qs(split_endpoint.query, keep_blank_values=True)
+        merged_query: dict[str, list[Any]] = parse_qs(split_endpoint.query, keep_blank_values=True)
         for key, value in (params or {}).items():
-            merged_query[key] = value if isinstance(value, (list, tuple)) else [value]
+            merged_query.setdefault(key, [])
+            if isinstance(value, (list, tuple)):
+                merged_query[key].extend(value)
+            else:
+                merged_query[key].append(value)
         query = urlencode(merged_query, doseq=True)
         base_url = f"{self.base_url}/"
         url = urljoin(base_url, endpoint_path)
