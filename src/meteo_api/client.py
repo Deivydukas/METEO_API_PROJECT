@@ -1,7 +1,7 @@
 import json
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urljoin
 from urllib.request import Request, urlopen
 
 
@@ -19,19 +19,25 @@ class MeteoAPIClient:
         self.timeout = timeout
 
     def fetch(self, endpoint: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
-        endpoint = endpoint.lstrip("/")
+        if endpoint.startswith(("http://", "https://", "//")):
+            raise ApiFetchError("Endpoint must be a relative path")
+
         query = urlencode(params or {})
-        url = f"{self.base_url}/{endpoint}"
+        base_url = f"{self.base_url}/"
+        url = urljoin(base_url, endpoint)
         if query:
             url = f"{url}?{query}"
 
         request = Request(url, method="GET")
         try:
             with urlopen(request, timeout=self.timeout) as response:
-                payload = response.read().decode("utf-8")
+                charset = response.headers.get_content_charset() or "utf-8"
+                payload = response.read().decode(charset)
                 status_code = response.getcode() or 200
         except (HTTPError, URLError, TimeoutError) as exc:
             raise ApiFetchError(f"API request failed: {exc}") from exc
+        except (LookupError, UnicodeDecodeError) as exc:
+            raise InvalidResponseError("API response could not be decoded") from exc
 
         if status_code >= 400:
             raise ApiFetchError(f"API returned status code {status_code}")

@@ -11,18 +11,22 @@ class TestMeteoAPIClient(unittest.TestCase):
         response = MagicMock()
         response.read.return_value = b'{"temperature": 22}'
         response.getcode.return_value = 200
+        response.headers.get_content_charset.return_value = "utf-8"
         mock_urlopen.return_value.__enter__.return_value = response
 
         client = MeteoAPIClient("https://example.com")
         result = client.fetch("/weather", params={"city": "Vilnius"})
 
         self.assertEqual(result, {"temperature": 22})
+        called_request = mock_urlopen.call_args.args[0]
+        self.assertIn("city=Vilnius", called_request.full_url)
 
     @patch("src.meteo_api.client.urlopen")
     def test_fetch_raises_on_invalid_json(self, mock_urlopen):
         response = MagicMock()
         response.read.return_value = b"not-json"
         response.getcode.return_value = 200
+        response.headers.get_content_charset.return_value = "utf-8"
         mock_urlopen.return_value.__enter__.return_value = response
 
         client = MeteoAPIClient("https://example.com")
@@ -35,6 +39,7 @@ class TestMeteoAPIClient(unittest.TestCase):
         response = MagicMock()
         response.read.return_value = b"[1, 2, 3]"
         response.getcode.return_value = 200
+        response.headers.get_content_charset.return_value = "utf-8"
         mock_urlopen.return_value.__enter__.return_value = response
 
         client = MeteoAPIClient("https://example.com")
@@ -49,6 +54,12 @@ class TestMeteoAPIClient(unittest.TestCase):
 
         with self.assertRaises(ApiFetchError):
             client.fetch("/weather")
+
+    def test_fetch_raises_on_absolute_endpoint(self):
+        client = MeteoAPIClient("https://example.com")
+
+        with self.assertRaises(ApiFetchError):
+            client.fetch("https://malicious.example/weather")
 
     @patch("src.meteo_api.client.urlopen")
     def test_fetch_raises_on_http_error(self, mock_urlopen):
@@ -69,6 +80,7 @@ class TestMeteoAPIClient(unittest.TestCase):
         response = MagicMock()
         response.read.return_value = b'{"message": "error"}'
         response.getcode.return_value = 500
+        response.headers.get_content_charset.return_value = "utf-8"
         mock_urlopen.return_value.__enter__.return_value = response
 
         client = MeteoAPIClient("https://example.com")
