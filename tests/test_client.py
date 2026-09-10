@@ -22,6 +22,20 @@ class TestMeteoAPIClient(unittest.TestCase):
         self.assertIn("city=Vilnius", called_request.full_url)
 
     @patch("src.meteo_api.client.urlopen")
+    def test_fetch_preserves_base_path_prefix(self, mock_urlopen):
+        response = MagicMock()
+        response.read.return_value = b'{"temperature": 22}'
+        response.getcode.return_value = 200
+        response.headers.get_content_charset.return_value = "utf-8"
+        mock_urlopen.return_value.__enter__.return_value = response
+
+        client = MeteoAPIClient("https://example.com/v1")
+        client.fetch("/weather")
+
+        called_request = mock_urlopen.call_args.args[0]
+        self.assertEqual(called_request.full_url, "https://example.com/v1/weather")
+
+    @patch("src.meteo_api.client.urlopen")
     def test_fetch_raises_on_invalid_json(self, mock_urlopen):
         response = MagicMock()
         response.read.return_value = b"not-json"

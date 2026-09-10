@@ -21,6 +21,7 @@ class MeteoAPIClient:
     def fetch(self, endpoint: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         if endpoint.startswith(("http://", "https://", "//")):
             raise ApiFetchError("Endpoint must be a relative path")
+        endpoint = endpoint.lstrip("/")
 
         query = urlencode(params or {})
         base_url = f"{self.base_url}/"
